@@ -56,6 +56,7 @@ if ! docker images "$image_name" | grep -q "$image_name" || [ "$update_map" = tr
 	docker run -t -v "${PWD}:/data/" "$image_name" osrm-extract -p "/data/$lua_script_file" "/data/$map_file" || echo "osrm-extract failed"
 	docker run -t -v "${PWD}:/data/" "$image_name" osrm-partition "/data/brazil-latest.osrm" || echo "osrm-partition failed"
 	docker run -t -v "${PWD}:/data/" "$image_name" osrm-customize "/data/brazil-latest.osrm" || echo "osrm-customize failed"
+	is_updated=true
 else
 	echo "$image_name já é uma imagem e o mapa não foi atualizado"
 fi
@@ -73,23 +74,29 @@ if [ "$( docker container inspect -f '{{.State.Status}}' $container_prod_name 2>
     		#echo "Connection to $url successful."
     		docker stop "$container_prod_name"
     		docker rename "$container_prod_name" old_"$container_prod_name"
-    		docker run -t -d -p "$container_prod_port":"$osrm_backend_port" -v "${PWD}:/data/" --name "$container_prod_name" "$image_name" osrm-routed --algorithm mld /data/brazil-latest.osrm || echo "osrm-routed failed"
+    		docker run -t -d -p "$container_prod_port":"$osrm_backend_port" -v "${PWD}:/data/" --name "$container_prod_name" --restart=on-failure:10 "$image_name" osrm-routed --algorithm mld /data/brazil-latest.osrm || echo "osrm-routed failed"
     		docker rm old_"$container_prod_name"
 		docker stop "$container_tmp_name"
 		docker rm "$container_tmp_name"
+		is_updated=true
 	else
     		echo "Failed setup temporary container."
+    		is_updated=false
 	fi
 else
 #	echo "teste"
-	docker run -t -d -p "$container_prod_port":"$osrm_backend_port" -v "${PWD}:/data/" --name "$container_prod_name" "$image_name" osrm-routed --algorithm mld /data/brazil-latest.osrm || echo "osrm-routed failed"
+	docker run -t -d -p "$container_prod_port":"$osrm_backend_port" -v "${PWD}:/data/" --name "$container_prod_name" --restart=on-failure:10 "$image_name" osrm-routed --algorithm mld /data/brazil-latest.osrm || echo "osrm-routed failed"
 fi
 
 
 url="http://127.0.0.1:$container_prod_port/route/v1/driving/13.388860,52.517037;13.385983,52.496891"
 
 if wget --timeout=5 -q -O- "$url" >/dev/null; then
-	echo "O servico OSRM está ATIVO e foi ATUALIZADO com sucesso. Pode ser rodado a partir da porta $container_prod_port"
+	if [ "$is_update" = true ]; then
+		echo "O servico OSRM está ATIVO e foi ATUALIZADO com sucesso. Pode ser rodado a partir da porta $container_prod_port"
+	else
+		echo "O servico OSRM NAO FOI ATUALIZADO, porém está ATIVO. Pode ser rodado a partir da porta $container_prod_port"
+	fi
 else
 	echo "SERVICO INATIVO, olhar mensagem de erro"
 fi	
