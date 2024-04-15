@@ -45,9 +45,9 @@ fi
 rm $lua_script_file
 wget $custom_lua_script
 
-#rm -rf "${map_extract_folder}/"
-#git clone $git_osrm || true
-#mv "${osrm_folder}/" "${map_extract_folder}/"
+rm -rf "${map_extract_folder}/"
+git clone $git_osrm || true
+mv "${osrm_folder}/" "${map_extract_folder}/"
 
 cp $map_file $map_extract_folder
 cp $lua_script_file $map_extract_folder
