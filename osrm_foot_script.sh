@@ -7,10 +7,10 @@ osrm_folder="osrm-backend"
 image_name="ghcr.io/project-osrm/osrm-backend"
 
 
-lua_script_file="car_custom.lua"
-map_extract_folder="car_map"
-image_tag="car"
-container_prod_port=5015
+lua_script_file="foot.lua"
+map_extract_folder="foot_mat"
+image_tag="foot"
+container_prod_port=5017
 custom_lua_script="https://raw.githubusercontent.com/marcelobveras/osrm_custom_script/main/${lua_script_file}"
 
 
