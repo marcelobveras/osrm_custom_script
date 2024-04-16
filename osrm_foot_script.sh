@@ -8,11 +8,10 @@ image_name="ghcr.io/project-osrm/osrm-backend"
 
 
 lua_script_file="foot.lua"
-map_extract_folder="foot_mat"
+map_extract_folder="foot_map"
 image_tag="foot"
 container_prod_port=5017
 custom_lua_script="https://raw.githubusercontent.com/marcelobveras/osrm_custom_script/main/${lua_script_file}"
-
 
 container_prod_name="osrm-backend-${image_tag}-prod"
 container_tmp_name="osrm-backend-tmp"
@@ -51,18 +50,19 @@ mv "${osrm_folder}/" "${map_extract_folder}/"
 
 cp $map_file $map_extract_folder
 cp $lua_script_file $map_extract_folder
-##
-cd ${map_extract_folder}
-##
+#
+# cd ${map_extract_folder}
+volume_path=${PWD}/${map_extract_folder}
+#
 docker container prune -f
 #
 image_name_final="${image_name}:${image_tag}"
 
 if ! docker images "$image_name_final" | grep -q "$image_name_final" || [ "$update_map" = true ]; then
-  docker run -t -v "${PWD}:/data/" "$image_name" osrm-extract -p "/data/$lua_script_file" "/data/$map_file" || echo "osrm-extract failed"
+  docker run -t -v "${volume_path}:/data/" "$image_name" osrm-extract -p "/data/$lua_script_file" "/data/$map_file" || echo "osrm-extract failed"
  	docker image tag "$image_name" "$image_name_final"
- 	docker run -t -v "${PWD}:/data/" "$image_name_final" osrm-partition "/data/brazil-latest.osrm" || echo "osrm-partition failed"
- 	docker run -t -v "${PWD}:/data/" "$image_name_final" osrm-customize "/data/brazil-latest.osrm" || echo "osrm-customize failed"
+ 	docker run -t -v "${volume_path}:/data/" "$image_name_final" osrm-partition "/data/brazil-latest.osrm" || echo "osrm-partition failed"
+ 	docker run -t -v "${volume_path}:/data/" "$image_name_final" osrm-customize "/data/brazil-latest.osrm" || echo "osrm-customize failed"
  	is_updated=true
 else
   echo "$image_name_final já é uma imagem e o mapa não foi atualizado"
@@ -74,14 +74,14 @@ if [ "$( docker container inspect -f '{{.State.Status}}' $container_tmp_name 2>/
 fi
 
 if [ "$( docker container inspect -f '{{.State.Status}}' $container_prod_name 2>/dev/null )" == "running" ]; then
-  docker run -t -d -p "$container_tmp_port":"$osrm_backend_port" -v "${PWD}:/data/" --name "$container_tmp_name" "$image_name_final" osrm-routed --algorithm mld /data/brazil-latest.osrm || echo "osrm-routed failed"
+  docker run -t -d -p "$container_tmp_port":"$osrm_backend_port" -v "${volume_path}:/data/" --name "$container_tmp_name" "$image_name_final" osrm-routed --algorithm mld /data/brazil-latest.osrm || echo "osrm-routed failed"
   url_tmp="http://127.0.0.1:$container_tmp_port/route/v1/driving/13.388860,52.517037;13.385983,52.496891"
   #echo curl --max-time 5 -s "$url"
   if wget --timeout=5 -q -O- "$url_tmp" >/dev/null; then
     #echo "Connection to $url successful."
     docker stop "$container_prod_name"
     docker rename "$container_prod_name" old_"$container_prod_name"
-    docker run -t -d -p "$container_prod_port":"$osrm_backend_port" -v "${PWD}:/data/" --name "$container_prod_name" --restart=on-failure:10 "$image_name_final" osrm-routed --algorithm mld /data/brazil-latest.osrm || echo "osrm-routed failed"
+    docker run -t -d -p "$container_prod_port":"$osrm_backend_port" -v "${volume_path}:/data/" --name "$container_prod_name" --restart=on-failure:10 "$image_name_final" osrm-routed --algorithm mld /data/brazil-latest.osrm || echo "osrm-routed failed"
     docker rm old_"$container_prod_name"
     docker stop "$container_tmp_name"
     docker rm "$container_tmp_name"
@@ -91,8 +91,8 @@ if [ "$( docker container inspect -f '{{.State.Status}}' $container_prod_name 2>
     is_updated=false
   fi
 else
-#	echo "teste"
-  docker run -t -d -p "$container_prod_port":"$osrm_backend_port" -v "${PWD}:/data/" --name "$container_prod_name" --restart=on-failure:10 "$image_name_final" osrm-routed --algorithm mld /data/brazil-latest.osrm || echo "osrm-routed failed"
+	echo run -t -d -p "$container_prod_port":"$osrm_backend_port" -v "${volume_path}:/data/" --name "$container_prod_name" --restart=on-failure:10 "$image_name_final" osrm-routed --algorithm mld /data/brazil-latest.osrm
+  docker run -t -d -p "$container_prod_port":"$osrm_backend_port" -v "${volume_path}:/data/" --name "$container_prod_name" --restart=on-failure:10 "$image_name_final" osrm-routed --algorithm mld /data/brazil-latest.osrm || echo "osrm-routed failed"
 fi
 
 
