@@ -10,7 +10,7 @@ image_name="ghcr.io/project-osrm/osrm-backend"
 lua_script_file="car_custom.lua"
 map_extract_folder="car_map"
 image_tag="car"
-container_prod_port=5017
+container_prod_port=5015
 custom_lua_script="https://raw.githubusercontent.com/marcelobveras/osrm_custom_script/main/${lua_script_file}"
 
 container_prod_name="osrm-backend-${image_tag}-prod"
@@ -52,7 +52,7 @@ cp $map_file $map_extract_folder
 cp $lua_script_file $map_extract_folder
 #
 # cd ${map_extract_folder}
-volume_path=${PWD}/${map_extract_folder}
+volume_path="${PWD}/${map_extract_folder}"
 #
 docker container prune -f
 #

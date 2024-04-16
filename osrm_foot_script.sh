@@ -52,7 +52,7 @@ cp $map_file $map_extract_folder
 cp $lua_script_file $map_extract_folder
 #
 # cd ${map_extract_folder}
-volume_path=${PWD}/${map_extract_folder}
+volume_path="${PWD}/${map_extract_folder}"
 #
 docker container prune -f
 #
